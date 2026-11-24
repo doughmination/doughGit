@@ -25,6 +25,11 @@
   <form method="post" action="?/create" class="panel row">
     <span class="mono">{data.owner}/</span>
     <input type="text" name="name" placeholder="my-project" pattern="[A-Za-z0-9._\-]+" required />
+    <label for="create-visibility">Visibility</label>
+    <select id="create-visibility" name="visibility" value={data.defaultVisibility}>
+      <option value="private">Private</option>
+      <option value="public">Public</option>
+    </select>
     <button type="submit" class="primary"><IcAdd class="icon" width="16" height="16" />create</button>
   </form>
 
@@ -32,8 +37,7 @@
     <IcDownload class="icon" width="20" height="20" />Import from another forge
   </h2>
   <p class="muted">
-    Copies every branch and tag from a public repository on GitHub, Codeberg, GitLab, or any other forge. The
-    import is a one-off copy, not a live mirror.
+    Make a one-time copy of every branch and tag from an HTTPS repository.
   </p>
   <form method="post" action="?/import" class="panel stack">
     <div class="row">
@@ -61,6 +65,37 @@
         name="name"
         pattern="[A-Za-z0-9._\-]+"
         placeholder="leave blank to use the source name"
+      />
+    </div>
+    <div class="row">
+      <label class="field-label" for="import-visibility">Visibility</label>
+      <select id="import-visibility" name="visibility">
+        <option value="private">Private</option>
+        <option value="public">Public</option>
+      </select>
+    </div>
+    <div class="row">
+      <label class="field-label" for="import-token">Access token</label>
+      <input
+        id="import-token"
+        type="password"
+        name="token"
+        autocomplete="off"
+        maxlength="4096"
+        placeholder="Read-access token for a private source"
+      />
+    </div>
+    <div class="row">
+      <label class="field-label" for="import-username">Source username</label>
+      <input
+        id="import-username"
+        type="text"
+        name="username"
+        autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+        maxlength="255"
+        placeholder="If required by the source forge"
       />
     </div>
     <div>

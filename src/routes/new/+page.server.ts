@@ -11,18 +11,35 @@ import { getSettings } from "#lib/server/settings.ts";
 import {
   createRepo,
   importRepo,
-  refSlug,
   setRepoPublic,
   type CreateResult,
 } from "#lib/server/git.ts";
 import { fail, field, me } from "#lib/server/web.ts";
 
-export const load: PageServerLoad = (event) => {
-  return { owner: sessionSlug(me(event)) };
+export const load: PageServerLoad = async (event) => {
+  const owner = sessionSlug(me(event));
+  const settings = await getSettings(owner);
+  return {
+    owner,
+    defaultVisibility: settings.defaultPrivate ? "private" : "public",
+  };
 };
 
+function publicVisibility(form: FormData): boolean {
+  const visibility = field(form, "visibility");
+  if (visibility !== "public" && visibility !== "private") {
+    fail("choose repository visibility", "Select Public or Private.");
+  }
+  return visibility === "public";
+}
+
 // Shared tail of "create empty" and "import": metadata, visibility, notify
-async function finishCreate(event: RequestEvent, result: CreateResult, verb: string): Promise<never> {
+async function finishCreate(
+  event: RequestEvent,
+  result: CreateResult,
+  verb: string,
+  startsPublic: boolean,
+): Promise<never> {
   if (!result.ok || !result.ref) {
     const title = result.reserved ? "that name is still reserved" : `could not ${verb} repo`;
     fail(title, result.error ?? "unknown error", result.reserved ? 409 : 400);
@@ -30,7 +47,6 @@ async function finishCreate(event: RequestEvent, result: CreateResult, verb: str
 
   const owner = sessionSlug(me(event));
   await clearRepoMetadata(result.ref);
-  const startsPublic = !(await getSettings(owner)).defaultPrivate;
   if (startsPublic) await setRepoPublic(result.ref, true);
   notifyRepoCreated(result.ref, owner, startsPublic);
   redirect(303, `/${result.ref.owner}/${result.ref.name}`);
@@ -40,16 +56,20 @@ export const actions: Actions = {
   create: async (event) => {
     const owner = sessionSlug(me(event));
     const form = await event.request.formData();
+    const startsPublic = publicVisibility(form);
     const result = await createRepo(owner, field(form, "name"));
-    return finishCreate(event, result, "create");
+    return finishCreate(event, result, "create", startsPublic);
   },
 
   import: async (event) => {
     const owner = sessionSlug(me(event));
     const form = await event.request.formData();
-    const url = field(form, "url");
-    const result = await importRepo(owner, field(form, "name"), url);
-    if (result.ref) console.log(`[import] ${refSlug(result.ref)} from ${url}`);
-    return finishCreate(event, result, "import");
+    const startsPublic = publicVisibility(form);
+    const credentials = {
+      username: field(form, "username"),
+      token: field(form, "token"),
+    };
+    const result = await importRepo(owner, field(form, "name"), field(form, "url"), credentials);
+    return finishCreate(event, result, "import", startsPublic);
   },
 };

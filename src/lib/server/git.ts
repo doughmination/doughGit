@@ -3,6 +3,7 @@
  */
 
 import { execFile } from "node:child_process";
+import { Buffer } from "node:buffer";
 import { promisify } from "node:util";
 import {
   readdir,
@@ -11,6 +12,7 @@ import {
   writeFile,
   unlink,
   mkdir,
+  mkdtemp,
   rm,
   rename,
 } from "node:fs/promises";
@@ -469,43 +471,79 @@ export async function lsRemote(url: string): Promise<LsRemoteResult> {
 
 const IMPORT_TIMEOUT_MS = 10 * 60_000;
 
+interface ImportCredentials {
+  username: string;
+  token: string;
+}
+
 export async function importRepo(
   owner: string,
   nameRaw: string,
   urlRaw: string,
+  credentials?: ImportCredentials,
 ): Promise<CreateResult> {
   const url = importUrl(urlRaw);
   if (!url) {
     return {
       ok: false,
-      error: "give a public https clone URL, like https://codeberg.org/owner/repo.git",
+      error: "give an HTTPS clone URL, like https://codeberg.org/owner/repo.git",
     };
+  }
+
+  const token = credentials?.token.trim() ?? "";
+  const username = credentials?.username.trim() || "oauth2";
+  if (token.length > 4096 || username.length > 255 || /[:\r\n\0]/.test(username)) {
+    return { ok: false, error: "invalid import credentials" };
   }
 
   const claim = await claimName(owner, nameRaw.trim() || nameFromUrl(url));
   if (!claim.ref) return claim;
 
-  const dir = refDir(claim.ref);
-  await mkdir(join(config.reposRoot, owner), { recursive: true });
+  const env = { ...REMOTE_ENV };
+  if (token) {
+    const authorization = Buffer.from(`${username}:${token}`, "utf8").toString("base64");
+    env.GIT_CONFIG_COUNT = "1";
+    env.GIT_CONFIG_KEY_0 = `http.${url}.extraHeader`;
+    env.GIT_CONFIG_VALUE_0 = `Authorization: Basic ${authorization}`;
+  }
+
+  const ownerDir = join(config.reposRoot, claim.ref.owner);
+  await mkdir(ownerDir, { recursive: true });
+  const stagingDir = await mkdtemp(join(ownerDir, ".import-"));
+
   try {
     await exec(
       "git",
-      [...REMOTE_HARDENING, "clone", "--bare", "--quiet", "--", url, dir],
+      [...REMOTE_HARDENING, "clone", "--bare", "--quiet", "--", url, stagingDir],
       {
         timeout: IMPORT_TIMEOUT_MS,
         killSignal: "SIGKILL",
         encoding: "utf8",
-        env: REMOTE_ENV,
+        env,
         windowsHide: true,
       },
     );
-    await git(dir, ["remote", "remove", "origin"]);
+    await git(stagingDir, ["remote", "remove", "origin"]);
+    const currentClaim = await claimName(owner, claim.ref.name);
+    if (!currentClaim.ref) return currentClaim;
+
+    await rename(stagingDir, refDir(claim.ref));
     return claim;
   } catch (err) {
-    await rm(dir, { recursive: true, force: true });
-    const e = err as { stderr?: string; killed?: boolean; message?: string };
-    const { message } = classifyRemoteError(e.stderr ?? e.message ?? "", e.killed === true);
+    const e = err as { stderr?: string; killed?: boolean; signal?: string; message?: string };
+    const timedOut = e.killed === true || e.signal === "SIGKILL";
+    const remote = classifyRemoteError(e.stderr ?? e.message ?? "", timedOut);
+    let message = remote.message;
+    if (token) {
+      message = timedOut
+        ? "timed out"
+        : "check the clone URL, source username and token permissions";
+    } else if (remote.kind === "denied" || remote.kind === "missing") {
+      message += " — if the source is private, enter a read-access token";
+    }
     return { ok: false, error: `could not import ${url}: ${message}` };
+  } finally {
+    await rm(stagingDir, { recursive: true, force: true });
   }
 }
 

@@ -64,7 +64,7 @@
 <form method="post" action="?/prefs" class="panel">
   <label class="check">
     <input type="checkbox" name="default_private" checked={data.defaultPrivate} />
-    <span>New repositories start private</span>
+    <span>Preselect Private when creating an empty repository</span>
   </label>
   <label class="check">
     <input type="checkbox" name="discord_private" checked={data.discordPrivate} />
