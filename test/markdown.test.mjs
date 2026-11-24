@@ -141,7 +141,22 @@ check(
 
 check(
   "fenced code keeps its content verbatim",
-  has("```js\nconst a = 1;\n```", "const a = 1;"),
+  has("```\nconst a = 1;\n```", "const a = 1;"),
+);
+check(
+  "labelled fences highlight code",
+  has("```js\nconst a = 1;\n```", '<span class="hljs-keyword">const</span>'),
+);
+check(
+  "nested document links keep the directory and selected revision",
+  renderMarkdown(
+    "[sibling](other.md) [parent](../README.md)",
+    repositoryLinks("user", "repo", "?h=docs", "guide/intro.md"),
+  ).includes('/user/repo/blob/guide/other.md?h=docs')
+    && renderMarkdown(
+      "[parent](../README.md)",
+      repositoryLinks("user", "repo", "?h=docs", "guide/intro.md"),
+    ).includes('/user/repo/blob/README.md?h=docs'),
 );
 check(
   "fence info string is not rendered as text",

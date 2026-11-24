@@ -357,14 +357,16 @@ async function summarise(ref: RepoRef): Promise<RepoSummary | null> {
   }
 }
 
-export async function listRepos(): Promise<RepoSummary[]> {
-  let owners: string[];
-  try {
-    owners = await readdir(config.reposRoot);
-  } catch {
-    return [];
-  }
+export async function listPublicRepoRefs(owners: string[]): Promise<RepoRef[]> {
+  const refs = await listRepoRefs(owners);
+  const visible = await mapLimit(refs, LIST_CONCURRENCY, async (ref) =>
+    !ref.name.endsWith(".git") && await isRepoPublic(ref) && await repoExists(ref)
+  );
 
+  return refs.filter((_ref, index) => visible[index]);
+}
+
+async function listRepoRefs(owners: string[]): Promise<RepoRef[]> {
   const refs: RepoRef[] = [];
   for (const owner of owners) {
     if (!safeSegment(owner)) continue;
@@ -382,6 +384,18 @@ export async function listRepos(): Promise<RepoSummary[]> {
     }
   }
 
+  return refs;
+}
+
+export async function listRepos(): Promise<RepoSummary[]> {
+  let owners: string[];
+  try {
+    owners = await readdir(config.reposRoot);
+  } catch {
+    return [];
+  }
+
+  const refs = await listRepoRefs(owners);
   const repos = (await mapLimit(refs, LIST_CONCURRENCY, summarise)).filter(
     (r): r is RepoSummary => r !== null,
   );

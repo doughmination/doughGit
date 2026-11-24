@@ -10,6 +10,7 @@ export interface Settings {
   discordPrivate: boolean;
   defaultPrivate: boolean;
   mirrorAuto: boolean;
+  allowCrawlers: boolean;
   webhookError: string | null;
   webhookErrorAt: number | null;
 }
@@ -19,6 +20,7 @@ const DEFAULTS: Omit<Settings, "owner"> = {
   discordPrivate: false,
   defaultPrivate: true,
   mirrorAuto: true,
+  allowCrawlers: false,
   webhookError: null,
   webhookErrorAt: null,
 };
@@ -29,6 +31,7 @@ interface Row {
   discord_private: number;
   default_private: number;
   mirror_auto: number;
+  allow_crawlers: number;
   webhook_error: string | null;
   webhook_error_at: number | null;
 }
@@ -45,6 +48,7 @@ export async function getSettings(owner: string): Promise<Settings> {
     discordPrivate: row.discord_private !== 0,
     defaultPrivate: row.default_private !== 0,
     mirrorAuto: row.mirror_auto !== 0,
+    allowCrawlers: row.allow_crawlers === 1,
     webhookError: row.webhook_error,
     webhookErrorAt: row.webhook_error_at,
   };
@@ -57,6 +61,23 @@ function ensureRow(owner: string): Statement {
        ON CONFLICT (owner) DO NOTHING`,
     )
     .bind(owner, now());
+}
+
+export async function crawlerOptIns(): Promise<string[]> {
+  const { results } = await db()
+    .prepare("SELECT owner FROM user_settings WHERE allow_crawlers = 1 ORDER BY owner")
+    .all<{ owner: string }>();
+
+  return results.map(({ owner }) => owner);
+}
+
+export async function setCrawlerOptIn(owner: string, allowCrawlers: boolean): Promise<void> {
+  await db().batch([
+    ensureRow(owner),
+    db()
+      .prepare("UPDATE user_settings SET allow_crawlers = ?, updated_at = ? WHERE owner = ?")
+      .bind(allowCrawlers, now(), owner),
+  ]);
 }
 
 export async function setDiscordWebhook(owner: string, url: string | null): Promise<void> {

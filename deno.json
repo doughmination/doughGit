@@ -19,6 +19,7 @@
     "@sveltejs/vite-plugin-svelte": "npm:@sveltejs/vite-plugin-svelte@^7.3.1",
     "@types/node": "npm:@types/node@^24.19.2",
     "@typescript/native-preview": "npm:@typescript/native-preview@^7.0.0-dev.20260707.2",
+    "highlight.js": "npm:highlight.js@11.11.1",
     "openid-client": "npm:openid-client@^6.8.8",
     "svelte": "npm:svelte@^5.57.3",
     "svelte-check": "npm:svelte-check@^4.7.7",

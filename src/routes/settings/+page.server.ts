@@ -7,7 +7,7 @@ import type { Actions, PageServerLoad } from "./$types";
 import { accountUrl, sessionSlug } from "#lib/server/auth.ts";
 import { AVATAR_MAX_BYTES, removeAvatar, saveAvatar } from "#lib/server/avatars.ts";
 import { findUserBySlug } from "#lib/server/users.ts";
-import { getSettings, setDiscordWebhook, setPrefs } from "#lib/server/settings.ts";
+import { getSettings, setCrawlerOptIn, setDiscordWebhook, setPrefs } from "#lib/server/settings.ts";
 import { discordWebhookUrl, maskWebhook } from "#lib/server/urls.ts";
 import { fail, field, me, notAnImage, uploadedImage } from "#lib/server/web.ts";
 
@@ -24,6 +24,7 @@ export const load: PageServerLoad = async (event) => {
     defaultPrivate: settings.defaultPrivate,
     discordPrivate: settings.discordPrivate,
     mirrorAuto: settings.mirrorAuto,
+    allowCrawlers: settings.allowCrawlers,
     hasUpload: Boolean((await findUserBySlug(slug))?.avatar_at),
     avatarMaxMb: AVATAR_MAX_BYTES / (1024 * 1024),
     accountUrl: accountUrl(),
@@ -32,6 +33,13 @@ export const load: PageServerLoad = async (event) => {
 };
 
 export const actions: Actions = {
+  crawlers: async (event) => {
+    const slug = sessionSlug(me(event));
+    const form = await event.request.formData();
+    await setCrawlerOptIn(slug, form.get("allow_crawlers") === "on");
+    redirect(303, "/settings?saved=1");
+  },
+
   discord: async (event) => {
     const slug = sessionSlug(me(event));
     const form = await event.request.formData();

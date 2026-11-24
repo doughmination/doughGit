@@ -7,6 +7,7 @@
     "npm:@sveltejs/vite-plugin-svelte@^7.3.1": "7.3.1_svelte@5.58.0_vite@8.3.8_@types+node@24.19.2",
     "npm:@types/node@^24.19.2": "24.19.2",
     "npm:@typescript/native-preview@^7.0.0-dev.20260707.2": "7.0.0-dev.20260707.2",
+    "npm:highlight.js@11.11.1": "11.11.1",
     "npm:openid-client@^6.8.8": "6.9.0",
     "npm:svelte-check@^4.7.7": "4.7.8_svelte@5.58.0_typescript@6.0.3",
     "npm:svelte@^5.57.3": "5.58.0",
@@ -378,6 +379,9 @@
       "os": ["darwin"],
       "scripts": true
     },
+    "highlight.js@11.11.1": {
+      "integrity": "sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w=="
+    },
     "import-meta-resolve@4.2.0": {
       "integrity": "sha512-Iqv2fzaTQN28s/FwZAoFq0ZSs/7hMAHJVX+w8PZl3cY19Pxk6jFFalxQoIfW2826i/fDLXv8IiEZRIT0lDuWcg=="
     },
@@ -736,6 +740,7 @@
       "npm:@sveltejs/vite-plugin-svelte@^7.3.1",
       "npm:@types/node@^24.19.2",
       "npm:@typescript/native-preview@^7.0.0-dev.20260707.2",
+      "npm:highlight.js@11.11.1",
       "npm:openid-client@^6.8.8",
       "npm:svelte-check@^4.7.7",
       "npm:svelte@^5.57.3",

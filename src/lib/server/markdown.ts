@@ -2,6 +2,7 @@
  * LICENCED DASL-1.0 (c) Clove Twilight
  */
 
+import { highlightCode } from "./highlight.ts";
 
 export function escapeHtml(s: string): string {
   return s
@@ -45,9 +46,16 @@ function safeUrl(raw: string): string | null {
 
 type ResolveLink = (href: string) => string;
 
-export function repositoryLinks(owner: string, repo: string, revisionQuery = ""): ResolveLink {
+export function repositoryLinks(
+  owner: string,
+  repo: string,
+  revisionQuery = "",
+  filePath = "",
+): ResolveLink {
   const repoPath = `/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
   const revision = escapeHtml(revisionQuery);
+  const directory = filePath.split("/").slice(0, -1).map(encodeURIComponent).join("/");
+  const base = new URL(directory ? `/${directory}/` : "/", "https://repository.invalid/");
 
   return (href) => {
     if (/^[/\\?#]/.test(href) || ABSOLUTE.test(href)) return href;
@@ -55,7 +63,7 @@ export function repositoryLinks(owner: string, repo: string, revisionQuery = "")
     const [, relativePath, search, fragment] = /^([^?#]*)(\?[^#]*)?(#.*)?$/.exec(href) ?? [];
     if (!relativePath) return href;
 
-    const { pathname } = new URL(`./${relativePath}`, "https://repository.invalid/");
+    const { pathname } = new URL(`./${relativePath}`, base);
     const query = revision && search
       ? `${revision}&amp;${search.slice(1)}`
       : revision || search || "";
@@ -595,7 +603,9 @@ function blocks(lines: string[], resolveLink?: ResolveLink, depth = 0): string {
       i++;
       while (i < lines.length && !close.test(at(lines, i))) buf.push(at(lines, i++));
       i++;
-      out.push(`<pre><code>${escapeHtml(buf.join("\n"))}</code></pre>`);
+      const code = buf.join("\n");
+      const html = highlightCode(code, fence[2]);
+      out.push(`<pre><code>${html ?? escapeHtml(code)}</code></pre>`);
       continue;
     }
 

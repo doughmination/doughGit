@@ -90,6 +90,22 @@
   </div>
 </form>
 
+<h2 class="section-title">Crawlers</h2>
+<form method="post" action="?/crawlers" class="panel">
+  <label class="check">
+    <input type="checkbox" name="allow_crawlers" checked={data.allowCrawlers} />
+    <span>
+      Allow crawlers on my public profile and repositories
+      <br /><small class="muted">Off by default. This setting applies to search crawlers and AI agents that follow robots.txt.</small>
+    </span>
+  </label>
+  <div>
+    <button type="submit" class="primary">
+      <IcSave class="icon" width="16" height="16" />save crawler preference
+    </button>
+  </div>
+</form>
+
 <h2 class="section-title"><IcPerson class="icon" width="20" height="20" />Account</h2>
 <section class="panel">
   <div class="row">

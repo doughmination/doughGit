@@ -140,6 +140,50 @@ pre.code {
 
 /* Rendered README */
 
+.hljs-comment,
+.hljs-quote {
+  color: var(--muted);
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-meta {
+  color: #ff91c8;
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition {
+  color: #a5dbb3;
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-deletion {
+  color: #ffc38d;
+}
+
+.hljs-title,
+.hljs-built_in,
+.hljs-type {
+  color: #9dcaff;
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable,
+.hljs-property {
+  color: #dcc1ff;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 700;
+}
+
 .readme {
   padding: 1.25rem 1.5rem;
   overflow-wrap: break-word;
