@@ -5,7 +5,7 @@
 import { canRead } from "./access.ts";
 import { findUserBySlug } from "./users.ts";
 import { siteRole } from "./roles.ts";
-import { renderMarkdown, plainSummary } from "./markdown.ts";
+import { renderMarkdown, plainSummary, repositoryLinks } from "./markdown.ts";
 import {
   PROFILE_REPO,
   headReadme,
@@ -74,7 +74,7 @@ export async function ownerPage(owner: string, viewer: string | null, withReadme
     readme: readme
       ? {
           path: readme.path,
-          html: renderMarkdown(readme.text),
+          html: renderMarkdown(readme.text, repositoryLinks(owner, PROFILE_REPO)),
           summary: plainSummary(readme.text),
         }
       : null,

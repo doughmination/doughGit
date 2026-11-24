@@ -2,7 +2,7 @@
  * LICENCED DASL-1.0 (c) Clove Twilight
  */
 
-import { renderMarkdown, plainSummary } from "../src/lib/server/markdown.ts";
+import { renderMarkdown, plainSummary, repositoryLinks } from "../src/lib/server/markdown.ts";
 
 let failures = 0;
 function check(label, cond) {
@@ -12,6 +12,31 @@ function check(label, cond) {
 
 const has = (md, needle) => renderMarkdown(md).includes(needle);
 const lacks = (md, needle) => !renderMarkdown(md).includes(needle);
+
+const readmeLinks = repositoryLinks("user", "repo");
+for (const href of ["licence.md", "./licence.md"]) {
+  check(
+    `README link ${href} opens the repository file`,
+    renderMarkdown(`[Licence](${href})`, readmeLinks)
+      .includes('href="/user/repo/blob/licence.md"'),
+  );
+}
+check(
+  "README links keep the selected revision, query and fragment",
+  renderMarkdown(
+    '> <a href="./docs/../licence.md?view=full#terms">Licence</a>',
+    repositoryLinks("user", "repo", "?h=release%2Fnext"),
+  ).includes('href="/user/repo/blob/licence.md?h=release%2Fnext&amp;view=full#terms"'),
+);
+check(
+  "README links preserve fragment-only, site-root and external destinations",
+  ['href="#terms"', 'href="/help"', 'href="https://example.com"'].every(
+    (attribute) => renderMarkdown(
+      "[Terms](#terms) [Help](/help) [External](https://example.com)",
+      readmeLinks,
+    ).includes(attribute),
+  ),
+);
 
 check(
   "script tags are never emitted",

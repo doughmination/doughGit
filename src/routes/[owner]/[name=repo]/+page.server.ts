@@ -13,7 +13,7 @@ import { removeRepoImage, saveRepoImage } from "#lib/server/avatars.ts";
 import { getSettings } from "#lib/server/settings.ts";
 import { clearRepoMetadata } from "#lib/server/repometa.ts";
 import { notifyRepoDeleted } from "#lib/server/notify.ts";
-import { renderMarkdown, plainSummary } from "#lib/server/markdown.ts";
+import { renderMarkdown, plainSummary, repositoryLinks } from "#lib/server/markdown.ts";
 import { describeMirror } from "#lib/server/mirrorview.ts";
 import {
   isLevel,
@@ -95,6 +95,7 @@ export const load: PageServerLoad = async (event) => {
   }
 
   const nowSec = Math.floor(Date.now() / 1000);
+  const query = revQuery(rev, refs.head);
   const summary = readmeFile ? plainSummary(readmeFile.text) : "";
 
   return {
@@ -104,7 +105,7 @@ export const load: PageServerLoad = async (event) => {
     empty: refs.branches.length === 0,
     refs,
     rev,
-    query: revQuery(rev, refs.head),
+    query,
     cloneUrl: `${config.baseUrl}/${ref.owner}/${ref.name}.git`,
     pusher: viewer ?? ref.owner,
     rawDescription,
@@ -113,7 +114,10 @@ export const load: PageServerLoad = async (event) => {
     readme: readmeFile
       ? {
           path: readmeFile.path,
-          html: renderMarkdown(readmeFile.text),
+          html: renderMarkdown(
+            readmeFile.text,
+            repositoryLinks(ref.owner, ref.name, query),
+          ),
         }
       : null,
     canPush,

@@ -43,6 +43,26 @@ function safeUrl(raw: string): string | null {
   return url;
 }
 
+type ResolveLink = (href: string) => string;
+
+export function repositoryLinks(owner: string, repo: string, revisionQuery = ""): ResolveLink {
+  const repoPath = `/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+  const revision = escapeHtml(revisionQuery);
+
+  return (href) => {
+    if (/^[/\\?#]/.test(href) || ABSOLUTE.test(href)) return href;
+
+    const [, relativePath, search, fragment] = /^([^?#]*)(\?[^#]*)?(#.*)?$/.exec(href) ?? [];
+    if (!relativePath) return href;
+
+    const { pathname } = new URL(`./${relativePath}`, "https://repository.invalid/");
+    const query = revision && search
+      ? `${revision}&amp;${search.slice(1)}`
+      : revision || search || "";
+    return `${repoPath}/blob${pathname}${query}${fragment ?? ""}`;
+  };
+}
+
 function linkAttrs(href: string): string {
   return ABSOLUTE.test(href) ? ` rel="nofollow noopener noreferrer"` : "";
 }
@@ -209,7 +229,7 @@ function attrValue(name: string, raw: string | undefined): string | null {
   }
 }
 
-function rebuildTag(closing: string, rawName: string, rawAttrs: string): string {
+function rebuildTag(closing: string, rawName: string, rawAttrs: string, resolveLink?: ResolveLink): string {
   const name = rawName.toLowerCase();
   const allowed = HTML_ATTRS[name];
   if (!allowed) return "";
@@ -227,7 +247,8 @@ function rebuildTag(closing: string, rawName: string, rawAttrs: string): string 
     }
     const attr = m[1]!.toLowerCase();
     if (!allowed.includes(attr) || seen.has(attr)) continue;
-    const value = attrValue(attr, m[2] ?? m[3] ?? m[4]);
+    const safeValue = attrValue(attr, m[2] ?? m[3] ?? m[4]);
+    const value = attr === "href" && safeValue && resolveLink ? resolveLink(safeValue) : safeValue;
     if (value === null) continue;
     seen.add(attr);
     if (attr === "href") href = value;
@@ -303,7 +324,7 @@ function LINK_RE(bang: string): RegExp {
   );
 }
 
-function inline(src: string): string {
+function inline(src: string, resolveLink?: ResolveLink): string {
   const s: Stash = [];
   let text = escapeHtml(src.replace(/\x00/g, ""));
 
@@ -316,7 +337,7 @@ function inline(src: string): string {
 
   HTML_TAG.lastIndex = 0;
   text = text.replace(HTML_TAG, (_m, closing: string, name: string, attrs: string) => {
-    const tag = rebuildTag(closing, name, attrs);
+    const tag = rebuildTag(closing, name, attrs, resolveLink);
     return tag ? park(s, tag) : "";
   });
 
@@ -334,8 +355,9 @@ function inline(src: string): string {
     LINK_RE(""),
     (_m, label: string, url: string, title?: string) => {
       const inner = emphasis(label);
-      const href = safeUrl(url);
-      if (!href) return inner;
+      const safeHref = safeUrl(url);
+      if (!safeHref) return inner;
+      const href = resolveLink ? resolveLink(safeHref) : safeHref;
       const t = title ? ` title="${title}"` : "";
       return park(s, `<a href="${href}"${t}${linkAttrs(href)}>${inner}</a>`);
     },
@@ -355,11 +377,11 @@ function inline(src: string): string {
   return unpark(emphasis(text), s);
 }
 
-function paragraph(lines: string[]): string {
+function paragraph(lines: string[], resolveLink?: ResolveLink): string {
   return lines
     .map((line, i) => {
       const hard = i < lines.length - 1 && /(?: {2,}|\\)$/.test(line);
-      return inline(line.replace(/(?: +|\\)$/, "")) + (hard ? "<br>" : "");
+      return inline(line.replace(/(?: +|\\)$/, ""), resolveLink) + (hard ? "<br>" : "");
     })
     .join("\n");
 }
@@ -391,12 +413,12 @@ const ALERT_ICON: Record<string, string> = {
   aside: '<path fill="currentColor" d="M14.5 17c0 1.65-1.35 3-3 3s-3-1.35-3-3h2c0 .55.45 1 1 1s1-.45 1-1s-.45-1-1-1H2v-2h9.5c1.65 0 3 1.35 3 3M19 6.5C19 4.57 17.43 3 15.5 3S12 4.57 12 6.5h2c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5S16.33 8 15.5 8H2v2h13.5c1.93 0 3.5-1.57 3.5-3.5m-.5 4.5H2v2h16.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5v2c1.93 0 3.5-1.57 3.5-3.5S20.43 11 18.5 11"/>',
 };
 
-function alertBlock(kind: string, body: string[], depth: number): string {
+function alertBlock(kind: string, body: string[], depth: number, resolveLink?: ResolveLink): string {
   const key = kind.toLowerCase();
   const label = key.charAt(0).toUpperCase() + key.slice(1);
   const icon = ALERT_ICON[key] ?? ALERT_ICON.note;
   const glyph = `<svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">${icon}</svg>`;
-  const inner = blocks(body, depth + 1);
+  const inner = blocks(body, resolveLink, depth + 1);
   const title = `<p class="md-alert-title">${glyph}${label}</p>`;
   return `<div class="md-alert md-alert-${key}">\n${title}\n${inner}\n</div>`;
 }
@@ -458,7 +480,7 @@ function alignOf(cell: string): string {
   return "";
 }
 
-function table(lines: string[], start: number): [string, number] {
+function table(lines: string[], start: number, resolveLink?: ResolveLink): [string, number] {
   const heads = splitRow(at(lines, start));
   const aligns = splitRow(at(lines, start + 1)).map(alignOf);
   let i = start + 2;
@@ -468,14 +490,14 @@ function table(lines: string[], start: number): [string, number] {
     rows.push(
       `<tr>${heads
         .map(
-          (_h, n) => `<td${aligns[n] ?? ""}>${inline(cells[n] ?? "")}</td>`,
+          (_h, n) => `<td${aligns[n] ?? ""}>${inline(cells[n] ?? "", resolveLink)}</td>`,
         )
         .join("")}</tr>`,
     );
     i++;
   }
   const head = heads
-    .map((h, n) => `<th${aligns[n] ?? ""}>${inline(h)}</th>`)
+    .map((h, n) => `<th${aligns[n] ?? ""}>${inline(h, resolveLink)}</th>`)
     .join("");
   return [
     `<table><thead><tr>${head}</tr></thead><tbody>${rows.join("")}</tbody></table>`,
@@ -483,7 +505,7 @@ function table(lines: string[], start: number): [string, number] {
   ];
 }
 
-function list(lines: string[], start: number, depth: number): [string, number] {
+function list(lines: string[], start: number, depth: number, resolveLink?: ResolveLink): [string, number] {
   const first = LIST_ITEM.exec(at(lines, start));
   if (!first) return ["", start + 1];
   const bullet = first[2] ?? "-";
@@ -535,7 +557,7 @@ function list(lines: string[], start: number, depth: number): [string, number] {
       const checkbox = task
         ? `<input type="checkbox" disabled${task[1] === " " ? "" : " checked"}> `
         : "";
-      const rendered = blocks(body, depth + 1).replace(/^<p>([\s\S]*?)<\/p>(?=\n<|$)/, "$1");
+      const rendered = blocks(body, resolveLink, depth + 1).replace(/^<p>([\s\S]*?)<\/p>(?=\n<|$)/, "$1");
       return `<li>${checkbox}${rendered}</li>`;
     })
     .join("\n");
@@ -548,10 +570,10 @@ function list(lines: string[], start: number, depth: number): [string, number] {
   return [`<${tag}${startAttr}>\n${html}\n</${tag}>`, i];
 }
 
-function blocks(lines: string[], depth = 0): string {
+function blocks(lines: string[], resolveLink?: ResolveLink, depth = 0): string {
   if (depth > MAX_NEST) {
     const text = lines.filter((l) => l.trim()).join("\n");
-    return text ? `<p>${paragraph(text.split("\n"))}</p>` : "";
+    return text ? `<p>${paragraph(text.split("\n"), resolveLink)}</p>` : "";
   }
 
   const out: string[] = [];
@@ -592,7 +614,7 @@ function blocks(lines: string[], depth = 0): string {
     const atx = ATX.exec(line);
     if (atx) {
       const level = (atx[1] ?? "#").length;
-      out.push(`<h${level}>${inline(atx[2] ?? "")}</h${level}>`);
+      out.push(`<h${level}>${inline(atx[2] ?? "", resolveLink)}</h${level}>`);
       i++;
       continue;
     }
@@ -600,12 +622,12 @@ function blocks(lines: string[], depth = 0): string {
     const under = at(lines, i + 1);
     if (!isBlockStart(line)) {
       if (/^\s{0,3}=+\s*$/.test(under)) {
-        out.push(`<h1>${inline(line.trim())}</h1>`);
+        out.push(`<h1>${inline(line.trim(), resolveLink)}</h1>`);
         i += 2;
         continue;
       }
       if (/^\s{0,3}-+\s*$/.test(under)) {
-        out.push(`<h2>${inline(line.trim())}</h2>`);
+        out.push(`<h2>${inline(line.trim(), resolveLink)}</h2>`);
         i += 2;
         continue;
       }
@@ -620,23 +642,23 @@ function blocks(lines: string[], depth = 0): string {
 
       const marker = ALERT.exec(buf[0] ?? "");
       if (marker) {
-        out.push(alertBlock(marker[1] ?? "", buf.slice(1), depth));
+        out.push(alertBlock(marker[1] ?? "", buf.slice(1), depth, resolveLink));
         continue;
       }
 
-      out.push(`<blockquote>\n${blocks(buf, depth + 1)}\n</blockquote>`);
+      out.push(`<blockquote>\n${blocks(buf, resolveLink, depth + 1)}\n</blockquote>`);
       continue;
     }
 
     if (line.includes("|") && isDelimiterRow(under)) {
-      const [html, next] = table(lines, i);
+      const [html, next] = table(lines, i, resolveLink);
       out.push(html);
       i = next;
       continue;
     }
 
     if (LIST_ITEM.test(line)) {
-      const [html, next] = list(lines, i, depth);
+      const [html, next] = list(lines, i, depth, resolveLink);
       out.push(html);
       i = next;
       continue;
@@ -665,7 +687,7 @@ function blocks(lines: string[], depth = 0): string {
     if (isHtmlOnly(line)) {
       const buf: string[] = [];
       while (i < lines.length && at(lines, i).trim()) {
-        buf.push(inline(at(lines, i).trim()));
+        buf.push(inline(at(lines, i).trim(), resolveLink));
         i++;
       }
       const html = buf.join("\n");
@@ -682,13 +704,13 @@ function blocks(lines: string[], depth = 0): string {
       buf.push(line);
       i++;
     }
-    out.push(`<p>${paragraph(buf)}</p>`);
+    out.push(`<p>${paragraph(buf, resolveLink)}</p>`);
   }
 
   return out.join("\n");
 }
 
-export function renderMarkdown(src: string): string {
+export function renderMarkdown(src: string, resolveLink?: ResolveLink): string {
   const oversize = src.length > MAX_RENDER_CHARS;
   const lines = (oversize ? src.slice(0, MAX_RENDER_CHARS) : src)
     .replace(/\r\n?/g, "\n")
@@ -697,7 +719,7 @@ export function renderMarkdown(src: string): string {
 
   if (oversize) lines.pop();
 
-  const html = balanceHtml(blocks(lines));
+  const html = balanceHtml(blocks(lines, resolveLink));
   return oversize
     ? `${html}\n<p><em>This document was truncated for display.</em></p>`
     : html;
