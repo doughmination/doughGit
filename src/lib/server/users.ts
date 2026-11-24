@@ -17,6 +17,19 @@ export interface UserRow {
   avatar_at: number | null;
 }
 
+type PublicProfile = Pick<UserRow, "slug" | "name" | "username" | "picture">;
+
+export async function listPublicProfiles(): Promise<PublicProfile[]> {
+  const { results } = await db()
+    .prepare(
+      `SELECT slug, COALESCE(name, username, slug) AS name, username, picture
+       FROM users
+       ORDER BY slug`,
+    )
+    .all<PublicProfile>();
+  return results;
+}
+
 export function findUserBySlug(slug: string): Promise<UserRow | null> {
   return db().prepare("SELECT * FROM users WHERE slug = ?").bind(slug).first<UserRow>();
 }
