@@ -7,7 +7,7 @@ import { commit } from "#lib/server/git.ts";
 import { notFound, viewable } from "#lib/server/web.ts";
 
 export const load: PageServerLoad = async (event) => {
-  const { ref, rev } = await viewable(event);
+  const { ref, access, rev } = await viewable(event);
 
   const detail = await commit(ref, event.params.sha);
   if (!detail) notFound();
@@ -15,6 +15,7 @@ export const load: PageServerLoad = async (event) => {
   return {
     owner: ref.owner,
     name: ref.name,
+    canManage: access === "write",
     query: `?h=${encodeURIComponent(rev)}`,
     commit: detail,
   };

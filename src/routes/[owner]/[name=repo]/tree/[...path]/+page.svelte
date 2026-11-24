@@ -32,7 +32,7 @@
     <h1>{data.owner}/{data.name}</h1>
   </div>
 
-  <RepoNav owner={data.owner} name={data.name} active="tree" query={data.query} />
+  <RepoNav owner={data.owner} name={data.name} active="tree" query={data.query} canManage={data.canManage} />
   <RevPicker refs={data.refs} rev={data.rev} />
 
   <div class="table-wrap">

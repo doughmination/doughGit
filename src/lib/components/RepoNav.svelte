@@ -6,6 +6,7 @@
   import IcCommit from "~icons/ic/outline-commit";
   import IcDescription from "~icons/ic/outline-description";
   import IcFolder from "~icons/ic/outline-folder";
+  import IcSettings from "~icons/ic/outline-settings";
   import Tabs from "#lib/components/Tabs.svelte";
 
   let {
@@ -13,11 +14,13 @@
     name,
     active,
     query,
+    canManage,
   }: {
     owner: string;
     name: string;
-    active: "summary" | "log" | "tree";
+    active: "summary" | "log" | "tree" | "settings";
     query: string;
+    canManage: boolean;
   } = $props();
 
   const base = $derived(`/${owner}/${name}`);
@@ -44,5 +47,15 @@
       icon: IcFolder,
       href: `${base}/tree${query}`,
     },
+    ...(canManage
+      ? [
+        {
+          id: "settings",
+          label: "settings",
+          icon: IcSettings,
+          href: `${base}/settings`,
+        },
+      ]
+      : []),
   ]}
 />

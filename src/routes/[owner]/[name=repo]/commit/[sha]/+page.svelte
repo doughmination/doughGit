@@ -27,7 +27,7 @@
     <h1>{commit.subject}</h1>
   </div>
 
-  <RepoNav owner={data.owner} name={data.name} active="log" query={data.query} />
+  <RepoNav owner={data.owner} name={data.name} active="log" query={data.query} canManage={data.canManage} />
 
   <dl class="panel commit-meta">
     <dt class="with-icon"><IcCommit class="icon" width="14" height="14" />commit</dt>

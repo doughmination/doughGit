@@ -7,7 +7,7 @@ import { blob } from "#lib/server/git.ts";
 import { notFound, revQuery, viewable } from "#lib/server/web.ts";
 
 export const load: PageServerLoad = async (event) => {
-  const { ref, refs, rev } = await viewable(event);
+  const { ref, access, refs, rev } = await viewable(event);
   const path = event.params.path;
 
   const file = await blob(ref, rev, path);
@@ -16,6 +16,7 @@ export const load: PageServerLoad = async (event) => {
   return {
     owner: ref.owner,
     name: ref.name,
+    canManage: access === "write",
     path,
     query: revQuery(rev, refs.head),
     ...file,

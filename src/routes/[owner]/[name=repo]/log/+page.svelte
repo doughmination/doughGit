@@ -26,7 +26,7 @@
     <h1>{title}</h1>
   </div>
 
-  <RepoNav owner={data.owner} name={data.name} active="log" query={data.query} />
+  <RepoNav owner={data.owner} name={data.name} active="log" query={data.query} canManage={data.canManage} />
   <RevPicker refs={data.refs} rev={data.rev} />
 
   <div class="table-wrap">

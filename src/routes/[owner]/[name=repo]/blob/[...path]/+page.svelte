@@ -26,7 +26,7 @@
     <h1 class="path">{data.path}</h1>
   </div>
 
-  <RepoNav owner={data.owner} name={data.name} active="tree" query={data.query} />
+  <RepoNav owner={data.owner} name={data.name} active="tree" query={data.query} canManage={data.canManage} />
 
   <p class="muted">
     <a class="with-icon" href="/{data.owner}/{data.name}/tree/{up}{data.query}">
