@@ -4,7 +4,7 @@
 
 import type { PageServerLoad } from "./$types";
 import { blob } from "#lib/server/git.ts";
-import { fileLanguage, highlightCode, highlightLanguages } from "#lib/server/highlight.ts";
+import { fileLanguage, highlightCode } from "#lib/server/highlight.ts";
 import { renderMarkdown, repositoryLinks } from "#lib/server/markdown.ts";
 import { notFound, revQuery, viewable } from "#lib/server/web.ts";
 
@@ -16,8 +16,6 @@ export const load: PageServerLoad = async (event) => {
   if (!file) notFound();
 
   const query = revQuery(rev, refs.head);
-  const requestedLanguage = event.url.searchParams.get("language") ?? "";
-  const language = highlightLanguages.includes(requestedLanguage) ? requestedLanguage : "";
   const isMarkdown = !file.binary && /\.(?:md|markdown|mdown|mkd|mkdn)$/i.test(path);
   const showSource = event.url.searchParams.get("view") === "source";
   const preview = isMarkdown && !showSource
@@ -30,13 +28,10 @@ export const load: PageServerLoad = async (event) => {
     canManage: access === "write",
     path,
     query,
-    revision: query ? rev : "",
     isMarkdown,
     preview,
-    language,
-    languages: !file.binary && preview === null ? highlightLanguages : [],
     highlighted: !file.binary && preview === null
-      ? highlightCode(file.text, language || fileLanguage(path))
+      ? highlightCode(file.text, fileLanguage(path, file.text))
       : null,
     ...file,
   };

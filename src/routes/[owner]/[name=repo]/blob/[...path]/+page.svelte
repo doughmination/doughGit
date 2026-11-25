@@ -61,25 +61,6 @@
       <Tabs active={data.preview === null ? "source" : "preview"} items={views} />
     {/if}
 
-    {#if data.languages.length}
-      <form class="language-picker" method="GET">
-        {#if data.revision}
-          <input type="hidden" name="h" value={data.revision} />
-        {/if}
-        {#if data.isMarkdown}
-          <input type="hidden" name="view" value="source" />
-        {/if}
-        <label for="source-language">Language</label>
-        <select id="source-language" name="language" value={data.language}>
-          <option value="">Automatic</option>
-          {#each data.languages as language (language)}
-            <option value={language}>{language}</option>
-          {/each}
-        </select>
-        <button class="btn small" type="submit">Apply</button>
-      </form>
-    {/if}
-
     {#if data.preview !== null}
       <article class="readme">{@html data.preview}</article>
     {:else if data.highlighted !== null}
@@ -98,12 +79,5 @@
 
   p {
     margin: 0;
-  }
-
-  .language-picker {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
   }
 </style>
