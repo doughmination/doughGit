@@ -3,8 +3,11 @@
  */
 
 import hljs from "highlight.js";
+import jpcl from "jpcl-lang/highlightjs";
 
 const MAX_HIGHLIGHT_LENGTH = 128 * 1024;
+
+hljs.registerLanguage("jpcl", jpcl);
 
 export const highlightLanguages = hljs.listLanguages().sort();
 
@@ -25,6 +28,7 @@ const EXTENSION_LANGUAGES = new Map([
   ["bash", "bash"],
   ["h", "c"],
   ["hpp", "cpp"],
+  ["jp", "jpcl"],
   ["mdown", "markdown"],
   ["mkd", "markdown"],
   ["mkdn", "markdown"],

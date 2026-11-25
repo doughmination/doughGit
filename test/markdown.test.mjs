@@ -148,6 +148,13 @@ check(
   has("```js\nconst a = 1;\n```", '<span class="hljs-keyword">const</span>'),
 );
 check(
+  "JPCL Markdown fences use JPCL 2 syntax",
+  has(
+    "```jpcl\n[config]\nenabled: true ~~ a comment\n```",
+    '<span class="hljs-literal">true</span> <span class="hljs-comment">~~ a comment</span>',
+  ),
+);
+check(
   "nested document links keep the directory and selected revision",
   renderMarkdown(
     "[sibling](other.md) [parent](../README.md)",
